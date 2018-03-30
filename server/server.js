@@ -23,23 +23,18 @@ io.on('connection', (socket) =>{
 
   socket.on('createMessage', (message, callback) => {
     console.log('createMessage',message);
-
     io.emit('newMessage',generateMessage(message.from, message.text));
-    callback(message.from);
+    callback();
   });
 
   socket.on('createLocationMessage', (coords) => {
     io.emit('newLocationMessage',generateLocationMessage('Admin', coords.latitude, coords.longitude));
   });
 
-
-
   socket.on('disconnect', (socket) =>{
     console.log('disconnected the User');
   });
 });
-
-
 
 server.listen(port, () =>{
   console.log('Server is up',port);
