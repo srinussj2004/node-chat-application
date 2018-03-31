@@ -18,13 +18,25 @@ var users = new Users();
 
 app.use(express.static(publicPath));
 
+app.get('/rooms', ( req, res ) => {
+	res.status(200).send(users.getRoomsList())
+})
+
 io.on('connection', (socket) =>{
   console.log('New User Connected');
 
 
   socket.on('join', (params, callback) => {
-    if(!isRealString(params.name) || !isRealString(params.room)){
+    if(!isRealString(params.name) || (!isRealString(params.room) && !params.activeRoom)){
       return callback('Name and room name are required');
+    }
+
+    if(params.activeRoom && !isRealString(params.room)) {
+			params.room = params.activeRoom;
+    }
+
+    if( !users.isUniqueUser(params.room, params.name)) {
+      return callback('A user with the same name exists in the room.');
     }
     socket.join(params.room);
     users.removeUser(socket.id);
@@ -36,14 +48,19 @@ io.on('connection', (socket) =>{
   });
 
   socket.on('createMessage', (message, callback) => {
-    console.log('createMessage',message);
-    io.emit('newMessage',generateMessage(message.from, message.text));
+    var user = users.getUser(socket.id);
+    if(user && isRealString(message.text)){
+      io.to(user.room).emit('newMessage',generateMessage(user.name, message.text));
+    }
     callback();
   });
 
   socket.on('createLocationMessage', (coords) => {
-    io.emit('newLocationMessage',generateLocationMessage('Sreeni Chat App Admin', coords.latitude, coords.longitude));
-  });
+    var user = users.getUser(socket.id);
+    if(user){
+    io.to(user.room).emit('newLocationMessage',generateLocationMessage(user.name, coords.latitude, coords.longitude));
+    }
+ });
 
   socket.on('disconnect', () =>{
     var user = users.removeUser(socket.id);
